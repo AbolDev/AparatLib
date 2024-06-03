@@ -7,7 +7,7 @@ setup(
     author='Abol',
     author_email='abaqry8686@gmail.com',
     description='A library for interacting with the Aparat API',
-    long_description=open('C:\\Users\\Bagheri\\Desktop\\projects\\python\\Github projects\\aparat\\README.md').read(),
+    long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/AbolDev/AparatLib',
     install_requires=[
