@@ -38,13 +38,13 @@ class Video(object):
     """ Aparat Video Model
         
     Attributes:
-        id (str): The ID of the video.
+        id (int): The ID of the video.
         title (str): The title of the video.
         description (str): The description of the video.
         uid (str): The UID of the video.
         visit_cnt (int): The visit count of the video.
-        visit_cnt_non_formatted (str): The non-formatted visit count of the video.
-        like_cnt_non_formatted (str): The non-formatted like count of the video.
+        visit_cnt_non_formatted (int): The non-formatted visit count of the video.
+        like_cnt_non_formatted (int): The non-formatted like count of the video.
         big_poster (str): The URL of the big poster of the video.
         medium_poster (str): The URL of the medium poster of the video.
         small_poster (str): The URL of the small poster of the video.
@@ -52,17 +52,17 @@ class Video(object):
         meta_duration (str): The meta duration of the video.
         date_exact (str): The exact date of the video.
         sdate (str): The sdate of the video.
-        sdate_timediff (str): The time difference of the video.
+        sdate_timediff (int): The time difference of the video.
         sdate_real (str): The real sdate of the video.
         deleted (str): The deleted status of the video.
         mdate (str): The mdate of the video.
-        file_link_all (str): The all file link of the video.
+        file_link_all (List[Dict[str, Union[str, List[str]]]]): List of dictionaries containing file links and their details.
         file_link (str): The file link of the video.
         hls_link (str): The HLS link of the video.
-        can_download (str): The download status of the video.
+        can_download (bool): The download status of the video.
         tags (str): The tags of the video.
         tags_str (str): The string representation of tags of the video.
-        tags_fa (str): The Persian tags of the video.
+        tags_fa (List[str]): The Persian tags of the video.
         frame_src (str): The frame source of the video.
         category (str): The category of the video.
         360d (str): The 360d status of the video.
@@ -94,7 +94,7 @@ class Video(object):
                        'max_height']:
                 setattr(self, key, value)
     
-    def commentSend(self, comment):
+    def send_comment(self, comment):
         """Send a comment for this video.
 
         Args:
@@ -113,6 +113,114 @@ class Video(object):
         response = self.session.post(self.data['data']['attributes']['commentSendLink'], data=data)
         
         return response.json()
+    
+    def like(self, timeout: int = 10) -> bool:
+        """
+        Like a video.
+
+        :param timeout: The timeout for the HTTP request (default is 10 seconds).
+        :return: True if the video is successfully liked, False otherwise.
+        """
+
+        for item in self.data['included']:
+            if 'type' in item and item['type'] == 'Like':
+                if item['attributes']['status'] == 'unlike':
+                    follow_response = self.session.get(item['attributes']['link'], timeout=timeout)
+                    if follow_response.status_code == 200:
+                        return True
+        return False
+
+    def unlike(self, timeout: int = 10) -> bool:
+        """
+        Unlike a video.
+
+        :param timeout: The timeout for the HTTP request (default is 10 seconds).
+        :return: True if the video is successfully liked, False otherwise.
+        """
+
+        for item in self.data['included']:
+            if 'type' in item and item['type'] == 'Like':
+                if item['attributes']['status'] == 'like':
+                    follow_response = self.session.get(item['attributes']['link'], timeout=timeout)
+                    if follow_response.status_code == 200:
+                        return True
+        return False
+
+class User(object):
+    """ Aparat User Model
+        
+    Attributes:
+        id (str): The unique identifier of the user.
+        hash_user_id (str): The hashed identifier of the user.
+        afcn (str): The user's name in a format suitable for related publications.
+        username (str): The username of the user.
+        name (str): The name of the user.
+        pic_s (str): The URL of the small profile picture of the user.
+        pic_m (str): The URL of the medium profile picture of the user.
+        pic_b (str): The URL of the large profile picture of the user.
+        follower_cnt (int): The number of followers of the user.
+        follow_cnt (int): The number of users that the user follows.
+        official (str): The official status of the user.
+        url (str): The URL of the user's profile.
+        video_cnt (int): The number of videos uploaded by the user.
+        cover_src (str): The URL of the user's cover image.
+        video_visit (int): The number of visits to the user's videos.
+        priority (str): The priority of the user.
+        brand_priority (str): The brand priority of the user.
+        description (str): The description of the user.
+        start_date (str): The start date of the user's activity.
+        start_date_jalali (str): The start date of the user's activity in the Jalali calendar.
+        show_kids_friendly (str): The display of a suitable label for children.
+        banned (str): The banned status of the user.
+        has_event (str): The event status of the user.
+    """
+
+    def __init__(self, data: Dict[str, Union[str, int]], is_logged_in, session):
+        self.data = data
+        self.is_logged_in = is_logged_in
+        self.session = session
+        data_ = data['data']['attributes']
+        for key, value in data_.items():
+            if key in ['id', 'hash_user_id', 'afcn', 'username', 'name', 'pic_s', 'pic_m', 'pic_b', 'follower_cnt',
+                       'follow_cnt', 'official', 'url', 'video_cnt', 'cover_src', 'video_visit', 'priority', 'brand_priority',
+                       'description', 'start_date', 'start_date_jalali','show_kids_friendly', 'banned', 'has_event']:
+                setattr(self, key, value)
+    
+    def follow(self, timeout: int = 10) -> bool:
+        """
+        Follow a user.
+
+        :param timeout: The timeout for the HTTP request (default is 10 seconds).
+        :return: True if the user is successfully followed, False otherwise.
+        """
+        if not self.is_logged_in:
+            raise LoginRequiredError()
+
+        for item in self.data['included']:
+            if item['type'] == 'Follow':
+                if item['attributes']['status'] == 'unfollow':
+                    follow_response = self.session.get(item['attributes']['link'], timeout=timeout)
+                    if follow_response.status_code == 200:
+                        return True
+        return False
+
+    def unfollow(self, timeout: int = 10) -> bool:
+        """
+        Unfollow a user.
+
+        :param timeout: The timeout for the HTTP request (default is 10 seconds).
+        :return: True if the user is successfully followed, False otherwise.
+        """
+        if not self.is_logged_in:
+            raise LoginRequiredError()
+
+        for item in self.data['included']:
+            if item['type'] == 'Follow':
+                if item['attributes']['status'] == 'follow':
+                    follow_response = self.session.get(item['attributes']['link'], timeout=timeout)
+                    if follow_response.status_code == 200:
+                        return True
+        return False
 
 class Aparat:
     """Aparat API Client
@@ -123,7 +231,7 @@ class Aparat:
         is_logged_in (bool): Flag indicating if the client is logged in.
     """
 
-    def __init__(self, proxy=None):
+    def __init__(self, timeout: int = 10, proxy: str = None):
         """Initialize Aparat API client.
         
         Args:
@@ -221,7 +329,7 @@ class Aparat:
             return data['data']
         return None
 
-    def username_information(self, user_id: str, timeout: int = 10) -> Union[Dict, None]:
+    def get_user(self, user_id: str, timeout: int = 10) -> User:
         """
         Get information about a user by their username.
 
@@ -232,7 +340,7 @@ class Aparat:
         response = self.session.get(f'{base_url}/api/fa/v1/user/user/information/username/{user_id}', timeout=timeout)
         if response.status_code == 200:
             data = response.json()
-            return data['data']
+            return User(data, self.is_logged_in, self.session)
         return None
 
     def notifications(self, timeout: int = 10) -> Union[Dict, None]:
@@ -260,102 +368,6 @@ class Aparat:
             data = response.json()
             return data
         return None
-
-    def follow(self, user_id: str, timeout: int = 10) -> bool:
-        """
-        Follow a user.
-
-        :param user_id: The ID of the user to follow.
-        :param timeout: The timeout for the HTTP request (default is 10 seconds).
-        :return: True if the user is successfully followed, False otherwise.
-        """
-        if not self.is_logged_in:
-            raise LoginRequiredError()
-
-        response = self.session.get(f'{base_url}/api/fa/v1/user/user/information/username/{user_id}', timeout=timeout)
-
-        if response.status_code == 200:
-            data = response.json()
-            for item in data['included']:
-                if item['type'] == 'Follow':
-                    if item['attributes']['status'] == 'unfollow':
-                        follow_response = self.session.get(item['attributes']['link'], timeout=timeout)
-                        if follow_response.status_code == 200:
-                            return True
-            return False
-        else:
-            raise UsernameNotFoundError()
-
-    def unfollow(self, user_id: str, timeout: int = 10) -> bool:
-        """
-        Unfollow a user.
-
-        :param user_id: The ID of the user to unfollow.
-        :param timeout: The timeout for the HTTP request (default is 10 seconds).
-        :return: True if the user is successfully unfollowed, False otherwise.
-        """
-        if not self.is_logged_in:
-            raise LoginRequiredError()
-
-        response = self.session.get(f'{base_url}/api/fa/v1/user/user/information/username/{user_id}', timeout=timeout)
-
-        if response.status_code == 200:
-            data = response.json()
-            for item in data['included']:
-                if item['type'] == 'Follow':
-                    if item['attributes']['status'] == 'follow':
-                        follow_response = self.session.get(item['attributes']['link'], timeout=timeout)
-                        if follow_response.status_code == 200:
-                            return True
-            return False
-        else:
-            raise UsernameNotFoundError()
-
-    def like(self, vid: str, timeout: int = 10) -> bool:
-        """
-        Like a video.
-
-        :param vid: The ID of the video to like.
-        :param timeout: The timeout for the HTTP request (default is 10 seconds).
-        :return: True if the video is successfully liked, False otherwise.
-        """
-
-        response = self.session.get(f'{base_url}/api/fa/v1/video/video/show/videohash/{vid}?pr=1&mf=1', timeout=timeout)
-        data = response.json()
-
-        if 'meta' in data and 'status' not in data['meta']:
-            for item in data['included']:
-                if 'type' in item and item['type'] == 'Like':
-                    if item['attributes']['status'] == 'unlike':
-                        follow_response = self.session.get(item['attributes']['link'], timeout=timeout)
-                        if follow_response.status_code == 200:
-                            return True
-            return False
-        else:
-            raise VideoNotFoundError()
-
-    def unlike(self, vid: str, timeout: int = 10) -> bool:
-        """
-        Unlike a video.
-
-        :param vid: The ID of the video to unlike.
-        :param timeout: The timeout for the HTTP request (default is 10 seconds).
-        :return: True if the video is successfully unliked, False otherwise.
-        """
-
-        response = self.session.get(f'{base_url}/api/fa/v1/video/video/show/videohash/{vid}?pr=1&mf=1', timeout=timeout)
-        data = response.json()
-
-        if 'meta' in data and 'status' not in data['meta']:
-            for item in data['included']:
-                if item['type'] == 'Like':
-                    if item['attributes']['status'] == 'like':
-                        follow_response = self.session.get(item['attributes']['link'], timeout=timeout)
-                        if follow_response.status_code == 200:
-                            return True
-            return False
-        else:
-            raise VideoNotFoundError()
 
     def get_video(self, vid: str, timeout: int = 10) -> Video:
         """Get video details from Aparat.
