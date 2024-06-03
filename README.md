@@ -15,8 +15,7 @@ from aparat import Aparat
 
 def main():
     aparat = Aparat()
-    login = aparat.login('aparat', 'your_password')
-    if login:
+    if aparat.login('your_username', 'your_password'):
         print("Login successful")
     else:
         print("Login failed.")
@@ -24,3 +23,5 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+
+For the complete documentation, you can visit this [**GitHub link**](https://github.com/AbolDev/AparatLib).
