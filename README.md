@@ -23,5 +23,3 @@ def main():
 if __name__ == "__main__":
     main()
 ```
-
-For the complete documentation, you can visit this [**GitHub link**](https://github.com/AbolDev/AparatLib).
