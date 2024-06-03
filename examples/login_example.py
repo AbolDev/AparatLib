@@ -2,8 +2,7 @@ from aparat import Aparat
 
 def main():
     aparat = Aparat()
-    login = aparat.login('aparat', 'your_password')
-    if login:
+    if aparat.login('your_username', 'your_password'):
         print("Login successful")
     else:
         print("Login failed.")

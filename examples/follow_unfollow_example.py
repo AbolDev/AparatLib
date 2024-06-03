@@ -2,9 +2,7 @@ from aparat import Aparat
 
 def main():
     aparat = Aparat()
-    auth_cookie = aparat.login('your_username', 'your_password')
-    if auth_cookie:
-        print("Login successful. Auth cookie:", auth_cookie)
+    if aparat.login('your_username', 'your_password'):
         user_id = 'user_id_to_follow'
 
         if aparat.follow(user_id):
