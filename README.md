@@ -49,3 +49,23 @@ if aparat.load_session('your_username'):
 else:
     print("Login failed.")
 ```
+
+## User
+
+```python
+from aparat import Aparat
+
+aparat = Aparat()
+if aparat.load_session('your_username'):
+    print("Session loaded successfully.")
+
+    user = aparat.get_user('aparat')
+    
+    # Follow the user
+    print(user.follow())
+
+    # Unfollow the user
+    print(user.unfollow())
+else:
+    print("Login failed.")
+```
