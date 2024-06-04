@@ -23,7 +23,7 @@ else:
 
 ```
 
-## Video
+## Interacting with Videos
 
 ```python
 from aparat import Aparat
@@ -50,7 +50,7 @@ else:
     print("Login failed.")
 ```
 
-## User
+## Interaction with other users
 
 ```python
 from aparat import Aparat
