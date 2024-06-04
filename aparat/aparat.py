@@ -34,6 +34,13 @@ class VideoNotFoundError(Exception):
         self.message = message
         super().__init__(self.message)
 
+class ResolutionError(Exception):
+    """Exception raised when the specified video resolution is unavailable."""
+    
+    def __init__(self, message="The requested video resolution is unavailable."):
+        self.message = message
+        super().__init__(self.message)
+
 class Video(object):
     """ Aparat Video Model
         
@@ -146,6 +153,47 @@ class Video(object):
                         return True
         return False
 
+    def download(self, resolution: str = None, download_highest_resolution: bool = None, path: str = None, chunk_size: int = 1024 * 1024 * 4) -> str:
+        """
+        Download the video with the specified resolution.
+
+        Args:
+            resolution (str, optional): The desired video resolution (e.g., '144p', '720p').
+            download_highest_resolution (bool, optional): If True, download the highest available resolution.
+            path (str, optional): The path where the video will be saved. Defaults to the video's name.
+            chunk_size (int, optional): The size of chunks to download at a time (default is 4 MB).
+
+        Raises:
+            ValueError: If neither `resolution` nor `download_highest_resolution` is specified.
+            ResolutionError: If the specified video resolution is not found.
+
+        Returns:
+            str: The path where the downloaded video is saved.
+        """
+        url = None
+        if not resolution and not download_highest_resolution:
+            raise ValueError("Either 'resolution' or 'download_highest_resolution' must be specified.")
+
+        elif download_highest_resolution:
+            url = self.data['data']['attributes']['file_link_all'][-1]['urls'][0]
+
+        else:
+            for link in self.data['data']['attributes']['file_link_all']:
+                if link['profile'] == resolution:
+                    url = link['urls'][0]
+                    break
+        
+        if not url:
+            raise ResolutionError()
+
+        path = path if path else url.split('/')[-1].split('?')[0]
+
+        with self.session.get(url, stream=True) as response:
+            with open(path, 'wb') as file:
+                for chunk in response.iter_content(chunk_size):
+                    file.write(chunk)
+            return path
+
 class User(object):
     """ Aparat User Model
         
@@ -231,18 +279,19 @@ class Aparat:
         is_logged_in (bool): Flag indicating if the client is logged in.
     """
 
-    def __init__(self, timeout: int = 10, proxy: str = None):
+    def __init__(self, proxy: Union[None, dict] = None):
         """Initialize Aparat API client.
         
         Args:
-            proxy (str, optional): The proxy URL. Defaults to None.
+            proxy (dict, optional): The proxy configuration dictionary. Defaults to None.
+                Example: {'http': 'http://proxy.example.com:8080', 'https': 'https://proxy.example.com:8080'}
         """
         self.session = requests.Session()
         self.is_logged_in = False
         self.proxy = proxy
 
         if self.proxy:
-            self.session.proxies.update({'https': self.proxy})
+            self.session.proxies.update(self.proxy)
 
     def login(self, username: str, password: str, timeout: int = 10) -> bool:
         """
