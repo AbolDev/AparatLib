@@ -22,21 +22,3 @@ else:
     print("Login failed.")
 
 ```
-
-## Login
-
-```python
-
-```
-
-## Login
-
-```python
-
-```
-
-## Login
-
-```python
-
-```
