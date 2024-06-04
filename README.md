@@ -22,3 +22,31 @@ else:
     print("Login failed.")
 
 ```
+
+## Video
+
+```python
+from aparat import Aparat
+
+aparat = Aparat()
+if aparat.load_session('your_username'):
+    print("Session loaded successfully.")
+
+    video = aparat.get_video('m98gm8j')
+    
+    # Send a comment
+    print(video.send_comment('Hello World!'))
+
+    # Like the video
+    print(video.like())
+
+    # Unlike the video
+    print(video.unlike())
+
+    # Download video
+    video.download()
+else:
+    print("Login failed.")
+
+```
+
