@@ -8,18 +8,35 @@ A Python library to interact with the Aparat API.
 pip install AparatLib
 ```
 
-## Login
+## Login & save session
 
 ```python
 from aparat import Aparat
 
-def main():
-    aparat = Aparat()
-    if aparat.login('your_username', 'your_password'):
-        print("Login successful")
-    else:
-        print("Login failed.")
+aparat = Aparat()
+if aparat.login('your_username', 'your_password'):
+    print("Login successful")
+    aparat.save_session()
+    print("Session saved successfully.")
+else:
+    print("Login failed.")
 
-if __name__ == "__main__":
-    main()
+```
+
+## Login
+
+```python
+
+```
+
+## Login
+
+```python
+
+```
+
+## Login
+
+```python
+
 ```
