@@ -44,8 +44,8 @@ if aparat.load_session('your_username'):
     print(video.unlike())
 
     # Download video with 480p resolution
-    video.download('480p')
+    video_path = video.download('480p')
+    print("Video path: ", video_path)
 else:
     print("Login failed.")
-
 ```
