@@ -1,3 +1,4 @@
 from .aparat import Aparat
+from .aparat import ReportReason
 
-__all__ = ['Aparat']
+__all__ = ['Aparat', 'ReportReason']
