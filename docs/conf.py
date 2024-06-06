@@ -35,12 +35,10 @@ source_suffix = {
 
 # -- Options for autodoc extension -------------------------------------------
 
-# Order in which members are documented
 autodoc_member_order = 'bysource'
 
 # -- Options for Napoleon extension ------------------------------------------
 
-# Use Google style docstrings
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 napoleon_include_init_with_doc = False
@@ -57,3 +55,4 @@ napoleon_use_rtype = True
 
 def setup(app):
     app.add_css_file('custom.css')
+    app.add_js_file('custom.js')
