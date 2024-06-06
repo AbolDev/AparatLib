@@ -2,13 +2,9 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
-# -- Project information -----------------------------------------------------
-
 project = 'AparatLib'
 author = 'Abol'
 release = '0.4.1'
-
-# -- General configuration ---------------------------------------------------
 
 extensions = [
     'myst_parser',  # Extension for parsing Markdown files
@@ -20,12 +16,8 @@ extensions = [
 templates_path = ['_templates']
 exclude_patterns = []
 
-# -- Options for HTML output -------------------------------------------------
-
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
-
-# -- Options for source file suffixes ----------------------------------------
 
 source_suffix = {
     '.rst': 'restructuredtext',
