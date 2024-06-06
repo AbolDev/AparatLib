@@ -13,6 +13,7 @@ setup(
     install_requires=[
         'requests',
         'python-magic',
+        'myst-parser',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
