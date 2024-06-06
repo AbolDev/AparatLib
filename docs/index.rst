@@ -12,4 +12,3 @@ Welcome to AparatLib's documentation!
    :glob:
 
    *.md
-   */*.md
