@@ -3,7 +3,7 @@
 A library for interacting with the Aparat API.
 
 ## Installation
-
+---
 ```bash
 pip install AparatLib
 ```
@@ -11,7 +11,7 @@ pip install AparatLib
 # Usage
 ---
 ## Login & save session
-
+---
 ```python
 from aparat import Aparat
 
@@ -26,7 +26,7 @@ else:
 ```
 
 ## Interacting with Videos
-
+---
 ```python
 from aparat import Aparat
 
@@ -53,7 +53,7 @@ else:
 ```
 
 ## Interaction with other users
-
+---
 ```python
 from aparat import Aparat
 
