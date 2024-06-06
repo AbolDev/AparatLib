@@ -8,9 +8,9 @@ A library for interacting with the Aparat API.
 pip install AparatLib
 ```
 
-## Usage
+# Usage
 
-# Login & save session
+## Login & save session
 
 ```python
 from aparat import Aparat
@@ -25,7 +25,7 @@ else:
 
 ```
 
-# Interacting with Videos
+## Interacting with Videos
 
 ```python
 from aparat import Aparat
@@ -52,7 +52,7 @@ else:
     print("Login failed.")
 ```
 
-# Interaction with other users
+## Interaction with other users
 
 ```python
 from aparat import Aparat
