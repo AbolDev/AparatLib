@@ -1,9 +1,14 @@
 import requests
+import base64
 import pickle
+import magic
+import uuid
+import os
 from typing import Dict, Union
 from enum import Enum
 
 base_url = 'https://www.aparat.com'
+upload_base_url = 'https://uc3.aparat.com'
 
 class IncorrectPasswordError(Exception):
     """Exception raised for incorrect password errors."""
@@ -66,6 +71,35 @@ class ReportReason(Enum):
     TECHNICAL_PROBLEM = 43
     OTHER = 44
 
+class VideoCategory(Enum):
+    VIDEO_GAME = 22
+    SPORTS = 11
+    CARTOON_ANIMATION = 18
+    COMEDY = 2
+    EDUCATION = 3
+    ENTERTAINMENT = 4
+    MOVIE_SERIES_DOCUMENTARY = 5
+    RELIGION = 6
+    MUSIC = 7
+    NEWS = 8
+    LAW_POLITICS = 9
+    TECHNOLOGY_COMPUTER = 10
+    TRAVEL_TOURISM = 13
+    ANIMALS = 14
+    BUSINESS = 16
+    CULTURE_ART = 17
+    FASHION_STYLE = 20
+    HEALTH = 21
+    FOOD_DRINK = 23
+    AUTOMOTIVE = 24
+    FAMILY_CHILD = 25
+    HOME_LIFE = 26
+    ENVIRONMENT = 27
+    FINANCE_ECONOMY = 28
+    SOCIAL = 29
+    BASIC_SCIENCES = 30
+    AGRICULTURE_HORTICULTURE = 31
+
 class Comment(object):
     """Aparat Comment Model.
 
@@ -97,9 +131,6 @@ class Comment(object):
         need_approve (bool): Indicates if the comment needs approval.
         spam (bool): Indicates if the comment is marked as spam.
         is_pinned (bool): Indicates if the comment is pinned.
-        vid (int): ID of the associated video.
-        is_logged_in (bool): Boolean indicating whether the user is logged in.
-        session: Session object for making HTTP requests.
     """
 
     def __init__(self, data: Dict[str, Union[str, int]], vid: int, is_logged_in: bool, session):
@@ -112,15 +143,34 @@ class Comment(object):
         :param session: Session object for making HTTP requests.
         """
 
-        self.data = data
         self.vid = vid
-        self.is_logged_in = is_logged_in
+        self.data = data
         self.session = session
-        for key, value in data.items():
-            if key in ['id', 'body', 'reply', 'sdate', 'sdate_timediff', 'sdate_gregorian', 'replyAction', 'replyDelete',
-                       'text', 'type', 'approve_link_text', 'approve_link_href', 'approved', 'approve_raw', 'isYours', 'deleted',
-                       'like_cnt', 'reply_cnt', 'mentioned_user_id', 'mentioned_name', 'need_approve', 'spam', 'is_pinned']:
-                setattr(self, key, value)
+        self.is_logged_in = is_logged_in
+
+        self.id = data.get('id')
+        self.body = data.get('body')
+        self.reply = data.get('reply')
+        self.sdate = data.get('sdate')
+        self.sdate_timediff = data.get('sdate_timediff')
+        self.sdate_gregorian = data.get('sdate_gregorian')
+        self.replyAction = data.get('replyAction')
+        self.replyDelete = data.get('replyDelete')
+        self.text = data.get('text')
+        self.type = data.get('type')
+        self.approve_link_text = data.get('approve_link_text')
+        self.approve_link_href = data.get('approve_link_href')
+        self.approved = data.get('approved')
+        self.approve_raw = data.get('approve_raw')
+        self.isYours = data.get('isYours')
+        self.deleted = data.get('deleted')
+        self.like_cnt = data.get('like_cnt')
+        self.reply_cnt = data.get('reply_cnt')
+        self.mentioned_user_id = data.get('mentioned_user_id')
+        self.mentioned_name = data.get('mentioned_name')
+        self.need_approve = data.get('need_approve')
+        self.spam = data.get('spam')
+        self.is_pinned = data.get('is_pinned')
     
     def like(self, timeout: int = 10) -> bool:
         """
@@ -213,7 +263,7 @@ class Comment(object):
             'body': body
         }
 
-        response = self.session.post(f'https://www.aparat.com/api/fa/v1/video/comment/reply_v2/videohash/{self.vid}', json=json_data, timeout=timeout)
+        response = self.session.post(f'{base_url}/api/fa/v1/video/comment/reply_v2/videohash/{self.vid}', json=json_data, timeout=timeout)
         data = response.json()
         if response.status_code == 200 and data['data'] and data['data']['type'] == 'success':
             return True
@@ -229,7 +279,7 @@ class Comment(object):
                  or False if an error occurs.
         """
 
-        response = self.session.get(f'https://www.aparat.com/api/fa/v1/video/comment/list_replies/comment_id/{self.id}/videohash/{self.vid}', timeout=timeout)
+        response = self.session.get(f'{base_url}/api/fa/v1/video/comment/list_replies/comment_id/{self.id}/videohash/{self.vid}', timeout=timeout)
         data = response.json()
         if response.status_code == 200:
             if data['data']:
@@ -238,6 +288,97 @@ class Comment(object):
                 return []
         else:
             return False
+
+class MyVideo(object):
+    """ Aparat MyVideo Model
+        
+    Attributes:
+        id (str): The unique identifier of the user.
+        uid (str): The unique identifier of the video.
+        hash_user_id (str): The hashed identifier of the user.
+        afcn (str): The user's name in a format suitable for related publications.
+        username (str): The username of the user.
+        name (str): The name of the user.
+        pic_s (str): The URL of the small profile picture of the user.
+        pic_m (str): The URL of the medium profile picture of the user.
+        pic_b (str): The URL of the large profile picture of the user.
+        follower_cnt (int): The number of followers of the user.
+        follow_cnt (int): The number of users that the user follows.
+        official (str): The official status of the user.
+        url (str): The URL of the user's profile.
+        video_cnt (int): The number of videos uploaded by the user.
+        cover_src (str): The URL of the user's cover image.
+        video_visit (int): The number of visits to the user's videos.
+        priority (str): The priority of the user.
+        brand_priority (str): The brand priority of the user.
+        description (str): The description of the user.
+        start_date (str): The start date of the user's activity.
+        start_date_jalali (str): The start date of the user's activity in the Jalali calendar.
+        show_kids_friendly (str): The display of a suitable label for children.
+        banned (str): The banned status of the user.
+        has_event (str): The event status of the user.
+    """
+
+    def __init__(self, data: Dict[str, Union[str, int]], is_logged_in, session):
+        self.data = data
+        self.session = session
+        self.is_logged_in = is_logged_in
+        
+        self.id = data['attributes'].get('id')
+        self.uid = data['attributes'].get('uid')
+        self.hash_user_id = data['attributes'].get('hash_user_id')
+        self.afcn = data['attributes'].get('afcn')
+        self.username = data['attributes'].get('username')
+        self.name = data['attributes'].get('name')
+        self.pic_s = data['attributes'].get('pic_s')
+        self.pic_m = data['attributes'].get('pic_m')
+        self.pic_b = data['attributes'].get('pic_b')
+        self.follower_cnt = data['attributes'].get('follower_cnt')
+        self.follow_cnt = data['attributes'].get('follow_cnt')
+        self.official = data['attributes'].get('official')
+        self.url = data['attributes'].get('url')
+        self.video_cnt = data['attributes'].get('video_cnt')
+        self.cover_src = data['attributes'].get('cover_src')
+        self.video_visit = data['attributes'].get('video_visit')
+        self.priority = data['attributes'].get('priority')
+        self.brand_priority = data['attributes'].get('brand_priority')
+        self.description = data['attributes'].get('description')
+        self.start_date = data['attributes'].get('start_date')
+        self.start_date_jalali = data['attributes'].get('start_date_jalali')
+        self.show_kids_friendly = data['attributes'].get('show_kids_friendly')
+        self.banned = data['attributes'].get('banned')
+        self.has_event = data['attributes'].get('has_event')
+        
+    def delete(self, timeout: int = 10) -> bool:
+        """
+        Deletes the video.
+
+        This method deletes a video by sending an HTTP GET request to the appropriate delete URL.
+        The method checks if the user is logged in and if the delete URL is available.
+
+        Args:
+            timeout (int, optional): The timeout for the HTTP request in seconds. Defaults to 10.
+
+        Returns:
+            bool: True if the video is successfully deleted, False otherwise.
+
+        Raises:
+            LoginRequiredError: If the user is not logged in.
+            ValueError: If neither 'share_delete_url' nor 'delete_url' is available.
+        """
+
+        if not self.is_logged_in:
+            raise LoginRequiredError()
+        
+        url = self.data['attributes'].get('share_delete_url') if self.data['attributes'].get('share_delete_url') else self.data['attributes'].get('delete_url')
+
+        if not url:
+            raise ValueError('delete_url does not exist.')
+
+        response = self.session.get(base_url + url, timeout=timeout)
+        if response.status_code == 200:
+            return True
+        return False
 
 class Video(object):
     """ Aparat Video Model
@@ -288,17 +429,46 @@ class Video(object):
         self.data = data
         self.is_logged_in = is_logged_in
         self.session = session
-        self.uid = data['data']['attributes']['uid']
-        data_ = data['data']['attributes']
-        for key, value in data_.items():
-            if key in ['id', 'title', 'description', 'uid', 'visit_cnt', 'visit_cnt_non_formatted',
-                       'like_cnt_non_formatted', 'big_poster', 'medium_poster', 'small_poster', 'duration',
-                       'meta_duration', 'date_exact', 'sdate', 'sdate_timediff', 'sdate_real', 'deleted', 'mdate',
-                       'file_link_all', 'file_link', 'hls_link', 'can_download', 'tags', 'tags_str', 'tags_fa',
-                       'frame_src', 'category', '360d', 'comment_enable', 'official', 'extra_data', 'content_type',
-                       'file_hash', 'isCompany', 'isAbroad', 'kids_friendly', 'owner_username', 'max_width',
-                       'max_height']:
-                setattr(self, key, value)
+        
+        self.id = data['data']['attributes'].get('id')
+        self.title = data['data']['attributes'].get('title')
+        self.description = data['data']['attributes'].get('description')
+        self.uid = data['data']['attributes'].get('uid')
+        self.visit_cnt = data['data']['attributes'].get('visit_cnt')
+        self.visit_cnt_non_formatted = data['data']['attributes'].get('visit_cnt_non_formatted')
+        self.like_cnt_non_formatted = data['data']['attributes'].get('like_cnt_non_formatted')
+        self.big_poster = data['data']['attributes'].get('big_poster')
+        self.medium_poster = data['data']['attributes'].get('medium_poster')
+        self.small_poster = data['data']['attributes'].get('small_poster')
+        self.duration = data['data']['attributes'].get('duration')
+        self.meta_duration = data['data']['attributes'].get('meta_duration')
+        self.date_exact = data['data']['attributes'].get('date_exact')
+        self.sdate = data['data']['attributes'].get('sdate')
+        self.sdate_timediff = data['data']['attributes'].get('sdate_timediff')
+        self.sdate_real = data['data']['attributes'].get('sdate_real')
+        self.deleted = data['data']['attributes'].get('deleted')
+        self.mdate = data['data']['attributes'].get('mdate')
+        self.file_link_all = data['data']['attributes'].get('file_link_all')
+        self.file_link = data['data']['attributes'].get('file_link')
+        self.hls_link = data['data']['attributes'].get('hls_link')
+        self.can_download = data['data']['attributes'].get('can_download')
+        self.tags = data['data']['attributes'].get('tags')
+        self.tags_str = data['data']['attributes'].get('tags_str')
+        self.tags_fa = data['data']['attributes'].get('tags_fa')
+        self.frame_src = data['data']['attributes'].get('frame_src')
+        self.category = data['data']['attributes'].get('category')
+        self._360d = data['data']['attributes'].get('360d')
+        self.comment_enable = data['data']['attributes'].get('comment_enable')
+        self.official = data['data']['attributes'].get('official')
+        self.extra_data = data['data']['attributes'].get('extra_data')
+        self.content_type = data['data']['attributes'].get('content_type')
+        self.file_hash = data['data']['attributes'].get('file_hash')
+        self.isCompany = data['data']['attributes'].get('isCompany')
+        self.isAbroad = data['data']['attributes'].get('isAbroad')
+        self.kids_friendly = data['data']['attributes'].get('kids_friendly')
+        self.owner_username = data['data']['attributes'].get('owner_username')
+        self.max_width = data['data']['attributes'].get('max_width')
+        self.max_height = data['data']['attributes'].get('max_height')
     
     def send_comment(self, comment: str, timeout: int = 10) -> Comment:
         """Send a comment for this video.
@@ -420,7 +590,7 @@ class Video(object):
                     file.write(chunk)
             return path
         
-    def report(self, reason: ReportReason = '', main_time: str = '', main_time1: str = '', main_time2: str = '', body: str = None, timeout: int = 10) -> Union[str, bool]:
+    def report(self, reason: ReportReason, main_time: str = '', main_time1: str = '', main_time2: str = '', body: str = None, timeout: int = 10) -> Union[str, bool]:
         """
         Report the video for a specified reason.
 
@@ -445,7 +615,7 @@ class Video(object):
             raise ValueError("This video cannot be reported.")
 
         json_data = {
-            'videoURL': f'https://www.aparat.com/v/{self.uid}',
+            'videoURL': f'{base_url}/v/{self.uid}',
             'reason': reason.value if type(reason) == ReportReason else reason,
             'main_time': main_time,
             'main_time1': main_time1,
@@ -506,6 +676,58 @@ class Video(object):
                         return True
         return False
 
+    def republish(self, timeout: int = 10) -> MyVideo:
+        """
+        republish video.
+
+        :param timeout: The timeout for the HTTP request (default is 10 seconds).
+        :return: True if the user is successfully followed, False otherwise.
+        """
+        if not self.is_logged_in:
+            raise LoginRequiredError()
+        
+        if not self.data['data']['attributes'].get('addToChannelLink'):
+            raise ValueError('addToChannelLink does not exist.')
+
+        response = self.session.get(base_url + self.data['data']['attributes']['addToChannelLink'], timeout=timeout)
+        data = response.json()
+        if response.status_code == 200 and 'data' in data:
+            return self.get_my_video(id=data['data']['id'])
+        else:
+            raise ValueError(response.json()['errors'][0]['detail'])
+
+    def get_my_video(self, id: str = None, uid: str = None, timeout: int = 10) -> MyVideo:
+        """
+        Get a video by its ID or UID.
+
+        Args:
+            id (str, optional): The ID of the video.
+            uid (str, optional): The UID of the video.
+            timeout (int, optional): The timeout for the HTTP request (default is 10 seconds).
+
+        Returns:
+            MyVideo: The video object.
+
+        Raises:
+            ValueError: If neither id nor uid is provided.
+        """
+        if not self.is_logged_in:
+            raise LoginRequiredError()
+
+        if not id and not uid:
+            raise ValueError("At least one of 'id' or 'uid' must be provided.")
+
+        response = self.session.get(f'{base_url}/api/fa/v1/user/video/videos', timeout=timeout)
+        data = response.json()
+        if response.status_code == 200 and data.get('included'):
+            for video in data['included']:
+                if id:
+                    if str(video['id']) == str(id):
+                        return MyVideo(video, self.is_logged_in, self.session)
+                elif uid:
+                    if video['attributes']['uid'] == uid:
+                        return MyVideo(video, self.is_logged_in, self.session)
+        return None
 
 class User(object):
     """ Aparat User Model
@@ -538,14 +760,32 @@ class User(object):
 
     def __init__(self, data: Dict[str, Union[str, int]], is_logged_in, session):
         self.data = data
-        self.is_logged_in = is_logged_in
         self.session = session
-        data_ = data['data']['attributes']
-        for key, value in data_.items():
-            if key in ['id', 'hash_user_id', 'afcn', 'username', 'name', 'pic_s', 'pic_m', 'pic_b', 'follower_cnt',
-                       'follow_cnt', 'official', 'url', 'video_cnt', 'cover_src', 'video_visit', 'priority', 'brand_priority',
-                       'description', 'start_date', 'start_date_jalali','show_kids_friendly', 'banned', 'has_event']:
-                setattr(self, key, value)
+        self.is_logged_in = is_logged_in
+        
+        self.id = data['data']['attributes'].get('id')
+        self.hash_user_id = data['data']['attributes'].get('hash_user_id')
+        self.afcn = data['data']['attributes'].get('afcn')
+        self.username = data['data']['attributes'].get('username')
+        self.name = data['data']['attributes'].get('name')
+        self.pic_s = data['data']['attributes'].get('pic_s')
+        self.pic_m = data['data']['attributes'].get('pic_m')
+        self.pic_b = data['data']['attributes'].get('pic_b')
+        self.follower_cnt = data['data']['attributes'].get('follower_cnt')
+        self.follow_cnt = data['data']['attributes'].get('follow_cnt')
+        self.official = data['data']['attributes'].get('official')
+        self.url = data['data']['attributes'].get('url')
+        self.video_cnt = data['data']['attributes'].get('video_cnt')
+        self.cover_src = data['data']['attributes'].get('cover_src')
+        self.video_visit = data['data']['attributes'].get('video_visit')
+        self.priority = data['data']['attributes'].get('priority')
+        self.brand_priority = data['data']['attributes'].get('brand_priority')
+        self.description = data['data']['attributes'].get('description')
+        self.start_date = data['data']['attributes'].get('start_date')
+        self.start_date_jalali = data['data']['attributes'].get('start_date_jalali')
+        self.show_kids_friendly = data['data']['attributes'].get('show_kids_friendly')
+        self.banned = data['data']['attributes'].get('banned')
+        self.has_event = data['data']['attributes'].get('has_event')
     
     def follow(self, toggle_push_notifications: bool = False, timeout: int = 10) -> bool:
         """
@@ -603,6 +843,7 @@ class Aparat:
             proxy (dict, optional): The proxy configuration dictionary. Defaults to None.
                 Example: {'http': 'http://proxy.example.com:8080', 'https': 'https://proxy.example.com:8080'}
         """
+
         self.session = requests.Session()
         self.is_logged_in = False
         self.proxy = proxy
@@ -619,6 +860,7 @@ class Aparat:
         :param timeout: The timeout for the HTTP request (default is 10 seconds).
         :return: AuthV1 cookie if login is successful, otherwise None.
         """
+
         response = self.session.get(f'{base_url}/signin?callbackType=postmessage', timeout=timeout)
         guid = response.text.split('guid: "')[1].split('",')[0]
 
@@ -687,6 +929,7 @@ class Aparat:
         :param timeout: The timeout for the HTTP request (default is 10 seconds).
         :return: A dictionary containing user information if successful, otherwise None.
         """
+
         if not self.is_logged_in:
             raise LoginRequiredError()
 
@@ -704,10 +947,70 @@ class Aparat:
         :param timeout: The timeout for the HTTP request (default is 10 seconds).
         :return: A dictionary containing user information if successful, otherwise None.
         """
+
         response = self.session.get(f'{base_url}/api/fa/v1/user/user/information/username/{user_id}', timeout=timeout)
         if response.status_code == 200:
             data = response.json()
             return User(data, self.is_logged_in, self.session)
+        return None
+
+    def get_my_videos(self, timeout: int = 10) -> list[MyVideo]:
+        """
+        Get my videos.
+
+        This method retrieves the videos uploaded by the logged-in user by sending an HTTP GET request
+        to the Aparat API. It returns a list of MyVideo objects representing the user's videos.
+
+        Args:
+            timeout (int, optional): The timeout for the HTTP request in seconds. Defaults to 10.
+
+        Returns:
+            list[MyVideo]: A list of MyVideo objects if successful, otherwise an empty list.
+
+        Raises:
+            LoginRequiredError: If the user is not logged in.
+        """
+        
+        if not self.is_logged_in:
+            raise LoginRequiredError()
+        
+        response = self.session.get(f'{base_url}/api/fa/v1/user/video/videos', timeout=timeout)
+        data = response.json()
+        if response.status_code == 200 and 'included' in data:
+            return [MyVideo(video, self.is_logged_in, self.session) for video in data['included']]
+        return []
+
+    def get_my_video(self, id: str = None, uid: str = None, timeout: int = 10) -> MyVideo:
+        """
+        Get a video by its ID or UID.
+
+        Args:
+            id (str, optional): The ID of the video.
+            uid (str, optional): The UID of the video.
+            timeout (int, optional): The timeout for the HTTP request (default is 10 seconds).
+
+        Returns:
+            MyVideo: The video object.
+
+        Raises:
+            ValueError: If neither id nor uid is provided.
+        """
+        if not self.is_logged_in:
+            raise LoginRequiredError()
+        
+        if not id and not uid:
+            raise ValueError("At least one of 'id' or 'uid' must be provided.")
+        
+        response = self.session.get(f'{base_url}/api/fa/v1/user/video/videos', timeout=timeout)
+        data = response.json()
+        if response.status_code == 200 and data.get('included'):
+            for video in data['included']:
+                if id:
+                    if str(video['id']) == str(id):
+                        return MyVideo(video, self.is_logged_in, self.session)
+                elif uid:
+                    if video['attributes']['uid'] == uid:
+                        return MyVideo(video, self.is_logged_in, self.session)
         return None
 
     def get_comment(self, vid: str, comment_id: str, timeout: int = 10) -> Comment:
@@ -732,7 +1035,7 @@ class Aparat:
                     for comment in data['data']:
                         if comment['id'] == comment_id:
                             return Comment(comment['attributes'], vid, self.is_logged_in, self.session)
-        raise ValueError('...')
+        raise ValueError('No comment found.')
 
     def notifications(self, timeout: int = 10) -> Union[Dict, None]:
         """
@@ -781,6 +1084,169 @@ class Aparat:
         else:
             raise VideoNotFoundError()
 
+    # import chardet
+    # def __fetch_csrf_tokens(self, retries: int = 6, timeout: int = 10):
+    #     for attempt in range(retries):
+    #         try:
+    #             response = self.session.get(f'{base_url}/upload', timeout=timeout)
+    #             detected_encoding = chardet.detect(response.content)['encoding']
+    #             response.encoding = detected_encoding
+
+    #             csrf_name = response.text.split("name='csrf_name' value='")[1].split("'")[0]
+    #             csrf_value = response.text.split("name='csrf_value' value='")[1].split("'")[0]
+                
+    #             # Return the csrf tokens if successful
+    #             return csrf_name, csrf_value
+    #         except:
+    #             print(f"Attempt {attempt + 1} failed.")
+    #             if attempt == retries - 1:
+    #                 raise ValueError("All attempts failed.")
+
+    def __generate_unique_uuid(self, timeout: int = 10) -> str:
+        """
+        Generates a unique UUID that does not already exist on the server.
+
+        :return: A unique UUID.
+        """
+        while True:
+            new_uuid = str(uuid.uuid4())
+            check_url = f'{upload_base_url}/chunks/{new_uuid}'
+            response = self.session.head(check_url, timeout=timeout)
+            
+            if response.status_code == 404:
+                return new_uuid
+
+    def upload_video(self, video: str, title: str, category: VideoCategory, tag_list: list, comment: str = 'yes', watermark: bool = True, inappropriate_child_content: bool = False, thumbnail: str = '', description: str = '', retries: int = 6, timeout: int = 10) -> MyVideo:
+        """Uploads a video to Aparat.
+
+        Args:
+            video (str): The path to the video file to be uploaded.
+            title (str): The title of the video.
+            tag_list (list): A list of tags for the video.
+            comment (str, optional): Specifies whether comments are allowed on the video. Possible values are 'yes', 'approve', or 'no'. Defaults to 'yes'.
+            watermark (bool, optional): Indicates whether to apply a watermark to the video. Defaults to True.
+            inappropriate_child_content (bool, optional): Specifies whether the video contains inappropriate content for children. Defaults to False.
+            thumbnail (str, optional): The path to the thumbnail image for the video. Defaults to ''.
+            description (str, optional): The description of the video. Defaults to ''.
+            retries (int, optional): The number of retries for uploading. Defaults to 6.
+            timeout (int, optional): The timeout for each HTTP request in seconds. Defaults to 10.
+
+        Returns:
+            MyVideo: An object representing the uploaded video.
+
+        Raises:
+            FileNotFoundError: If the specified file or thumbnail does not exist.
+            ValueError: If there are errors during the upload process.
+        """
+        
+        # Check if the file exists
+        if not os.path.isfile(video):
+            raise FileNotFoundError(f"The file at path {video} does not exist.")
+        
+        # Check if thumbnail exists
+        if thumbnail and not os.path.isfile(thumbnail):
+            raise FileNotFoundError(f"The file at path {thumbnail} does not exist.")
+        
+        # Set thumbnail to empty string if not provided
+        if not thumbnail:
+            thumbnail = ''
+
+        # Determine file MIME type
+        mime = magic.Magic(mime=True)
+        mime_type = mime.from_file(video)
+
+        # Get upload URL from Aparat API
+        json_data = {
+            'uploadIds': [0],
+            'upload_base_url': upload_base_url,
+            'upload_cnt': 1
+        }
+        response = self.session.post(f'{base_url}/api/fa/v1/video/upload/upload_url', json=json_data, timeout=timeout)
+        data = response.json()
+
+        # Get file size
+        size = os.path.getsize(video)
+
+        # Prepare headers for upload request
+        headers = {'x-token': data['data'][0]['attributes']['token']}
+        uploadId = data['data'][0]['attributes']['uploadId']
+        uuid_ = self.__generate_unique_uuid(timeout)
+
+        # Prepare files for upload
+        files = {
+            'qqpartindex': (None, '0'),
+            'qqchunksize': (None, size),
+            'qqpartbyteoffset': (None, '0'),
+            'qqtotalfilesize': (None, size),
+            'qqtype': (None, mime_type),
+            'qquuid': (None, uuid_),
+            'qqfilename': (None, video),
+            'qqfilepath': (None, video),
+            'qqtotalparts': (None, '1'),
+            'qqfile': (video, open(video, 'rb'), 'application/octet-stream')
+        }
+
+        # Upload video file
+        response = requests.post(f'{upload_base_url}/upload', headers=headers, files=files)
+
+        # If upload is successful
+        if response.json()['success']:
+            requests.post(f'{upload_base_url}/file/{uuid_}', timeout=timeout)
+
+            # Notify server that upload chunks are done
+            data = {
+                'qquuid': uuid_,
+                'qqfilename': video,
+                'qqtotalfilesize': size,
+                'qqtotalparts': '1'
+            }
+            requests.post(f'{upload_base_url}/chunksdone', headers=headers, data=data, timeout=timeout)
+
+            # Prepare thumbnail data if provided
+            if thumbnail:
+                with open(thumbnail, "rb") as file:
+                    image_content = file.read()
+                    image_base64 = base64.b64encode(image_content).decode('utf-8')
+
+                thumbnail = f'data:image/jpeg;base64,{image_base64}'
+
+            # Prepare JSON data for video metadata
+            json_data = {
+                'uploadId': uploadId,
+                'video': uuid_,
+
+                'watermark': '1' if watermark else '0',
+                'watermark_bool': watermark,
+                'comment': comment,  # 'yes', 'approve', 'no'
+                'kids_friendly': inappropriate_child_content,
+                'title': title,
+                'descr': description,
+                'thumbnail': thumbnail,
+                'tags': '-'.join(tag_list),
+                'category': category.value if type(category) == VideoCategory else category,
+                'upload_base_url': upload_base_url,
+
+                'new_playlist': '',
+                'playlist_temp': '',
+                'playlistid': [],
+                'subtitle': [],
+                'subtitle_temp': [],
+                'publish_date': '',
+                'video_pass': 0,
+            }
+
+            # Upload video metadata
+            response = self.session.post(f'{base_url}/api/fa/v1/video/upload/upload/uploadId/{uploadId}', json=json_data, timeout=timeout)
+            data = response.json()
+            if 'data' in data:
+                return self.get_my_video(id=data['data']['id'])
+            elif 'errors' in data:
+                print(data)
+                if 'tags' in data['errors']:
+                    raise ValueError(data['errors']['tags'][0])
+                else:
+                    raise ValueError(data['errors'][0]['detail'])
+
     def logout(self) -> None:
         """
         Log out from the Aparat account.
@@ -798,7 +1264,7 @@ class Aparat:
         with open(f'{self.username}.session', 'wb') as f:
             pickle.dump(self.session, f)
 
-    def load_session(self, username: str, timeout: int = 10) -> None:
+    def load_session(self, username: str, timeout: int = 10) -> bool:
         """
         Load the session object from a file.
         """

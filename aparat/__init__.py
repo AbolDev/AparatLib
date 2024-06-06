@@ -1,4 +1,3 @@
-from .aparat import Aparat
-from .aparat import ReportReason
+from .aparat import Aparat, ReportReason, VideoCategory
 
-__all__ = ['Aparat', 'ReportReason']
+__all__ = ['Aparat', 'ReportReason', 'VideoCategory']
