@@ -1,5 +1,5 @@
 # AparatLib
-
+---
 A library for interacting with the Aparat API.
 
 ## Installation
@@ -9,7 +9,7 @@ pip install AparatLib
 ```
 
 # Usage
-
+---
 ## Login & save session
 
 ```python
