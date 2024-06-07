@@ -1,0 +1,15 @@
+/* جایگزین کردن حق تکثیر برای حذف نماد حق تکثیری که توسط پوسته ReadTheDocs اجباری شده است
+   اما از سوی تیم حقوقی ما نادیده گرفته می‌شود */
+   div[role=contentinfo] {
+	visibility: hidden;
+	position: relative;
+}
+
+div[role=contentinfo]:after {
+	visibility: visible;
+	position: absolute;
+	top: 0;
+	left: 0;
+	/* content: "© Copyright 2024 Our Company. All rights reserved."; */
+	content: "© Copyright 2024 Abolfazl Bagheri.";
+}
