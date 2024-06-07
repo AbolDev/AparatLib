@@ -25,49 +25,9 @@ else:
 
 ```
 
-## Interacting with Videos
----
-```python
-from aparat import Aparat
-
-aparat = Aparat()
-if aparat.load_session('your_username'):
-    print("Session loaded successfully.")
-
-    video = aparat.get_video('m98gm8j')
-    
-    # Send a comment
-    print(video.send_comment('Hello World!'))
-
-    # Like the video
-    print(video.like())
-
-    # Unlike the video
-    print(video.unlike())
-
-    # Download video with 480p resolution
-    video_path = video.download('480p')
-    print("Video path: ", video_path)
-else:
-    print("Login failed.")
-```
-
-## Interaction with other users
----
-```python
-from aparat import Aparat
-
-aparat = Aparat()
-if aparat.load_session('your_username'):
-    print("Session loaded successfully.")
-
-    user = aparat.get_user('aparat')
-    
-    # Follow the user
-    print(user.follow())
-
-    # Unfollow the user
-    print(user.unfollow())
-else:
-    print("Login failed.")
-```
+1. [Aparat API Client](Aparat%20API%20Client.md)
+2. [Aparat Comment Model](Aparat%20Comment%20Model.md)
+3. [Aparat MyVideo Model](Aparat%20MyVideo%20Model.md)
+4. [Aparat User Model](Aparat%20User%20Model.md)
+5. [Aparat Video Model](Aparat%20Video%20Model.md)
+6. [Errors and Enums](Errors%20and%20Enums.md)
