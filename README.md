@@ -69,3 +69,5 @@ if aparat.load_session('your_username'):
 else:
     print("Login failed.")
 ```
+
+For more detailed information, please refer to the [documentation](https://aparatlib.readthedocs.io/en/latest/).
