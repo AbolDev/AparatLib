@@ -3,6 +3,8 @@ import base64
 import pickle
 import magic
 import uuid
+import wget
+import re
 import os
 from typing import Dict, Union
 from enum import Enum
@@ -411,7 +413,7 @@ class Video(object):
         tags_fa (List[str]): The Persian tags of the video.
         frame_src (str): The frame source of the video.
         category (str): The category of the video.
-        360d (str): The 360d status of the video.
+        _360d (str): The 360d status of the video.
         comment_enable (str): The comment enable status of the video.
         official (str): The official status of the video.
         extra_data (str): The extra data of the video.
@@ -514,8 +516,8 @@ class Video(object):
                         for comment in data['data']:
                             if str(comment['id']) == str(comment_id):
                                 return Comment(comment['attributes'], self.uid, self.is_logged_in, self.session)
-        elif 'errors' in data:
-            raise ValueError(data['errors'][0]['detail'])
+        else:
+            raise ValueError(data)
 
     def like(self, timeout: int = 10) -> bool:
         """
@@ -549,7 +551,7 @@ class Video(object):
                         return True
         return False
 
-    def download(self, resolution: str = None, download_highest_resolution: bool = None, path: str = None, chunk_size: int = 1024 * 1024 * 4) -> str:
+    def download(self, resolution: str = None, download_highest_resolution: bool = None, path: str = None, show_progress_bar: bool = True) -> str:
         """
         Download the video with the specified resolution.
 
@@ -557,7 +559,7 @@ class Video(object):
             resolution (str, optional): The desired video resolution (e.g., '144p', '720p').
             download_highest_resolution (bool, optional): If True, download the highest available resolution.
             path (str, optional): The path where the video will be saved. Defaults to the video's name.
-            chunk_size (int, optional): The size of chunks to download at a time (default is 4 MB).
+            show_progress_bar (bool, optional): If True, show the download progress bar. Defaults to True.
 
         Raises:
             ValueError: If neither `resolution` nor `download_highest_resolution` is specified.
@@ -584,11 +586,16 @@ class Video(object):
 
         path = path if path else url.split('/')[-1].split('?')[0]
 
-        with self.session.get(url, stream=True) as response:
-            with open(path, 'wb') as file:
-                for chunk in response.iter_content(chunk_size):
-                    file.write(chunk)
-            return path
+        def progress_bar(current, total, width=40): 
+            progress = current / total
+            downloaded = current / (1024 * 1024)
+            total_size = total / (1024 * 1024)
+            arrow = '-' * int(progress * width - 1) + '>'
+            spaces = ' ' * (width - len(arrow))
+            print('\rDownloading: [{}] {:.2f}% ({:.2f}MB out of {:.2f}MB)'.format(arrow + spaces, progress * 100, downloaded, total_size), end='')
+
+        wget.download(url, path, bar=progress_bar if show_progress_bar else None)
+        return path
         
     def report(self, reason: ReportReason, main_time: str = '', main_time1: str = '', main_time2: str = '', body: str = None, timeout: int = 10) -> Union[str, bool]:
         """
@@ -694,7 +701,7 @@ class Video(object):
         if response.status_code == 200 and 'data' in data:
             return self.get_my_video(id=data['data']['id'])
         else:
-            raise ValueError(response.json()['errors'][0]['detail'])
+            raise ValueError(response.json())
 
     def get_my_video(self, id: str = None, uid: str = None, timeout: int = 10) -> MyVideo:
         """
@@ -728,6 +735,119 @@ class Video(object):
                     if video['attributes']['uid'] == uid:
                         return MyVideo(video, self.is_logged_in, self.session)
         return None
+
+class Playlist(object):
+    """Aparat Playlist Model
+    
+    Attributes:
+        id (int): The ID of the playlist.
+        title (str): The title of the playlist.
+        description (str): The description of the playlist.
+        cnt (int): The count of videos in the playlist.
+        big_poster (str): The URL of the big poster image.
+        small_poster (str): The URL of the small poster image.
+        uid (str): The unique identifier of the playlist.
+        toggle_url (str): The URL for toggling the playlist state.
+        publish_type (str): The publish type of the playlist.
+        create_type (str): The creation type of the playlist.
+        checked (bool): The checked status of the playlist.
+        order (int): The order of the playlist.
+        last_update (str): The last update timestamp of the playlist.
+        isYours (bool): Flag indicating if the playlist belongs to the user.
+        playlist_follow_link (str): The URL for following the playlist.
+        playlist_follow_status (str): The follow status of the playlist.
+        list_videos_playlist (list): The list of videos in the playlist.
+        videos (list[Video]): The list of Video objects in the playlist.
+    """
+
+    def __init__(self, data: Dict[str, Union[str, int]], is_logged_in, session, timeout: int = 10):
+        self.is_logged_in = is_logged_in
+        self.session = session
+        
+        self.id = data['data']['attributes'].get('id')
+        self.title = data['data']['attributes'].get('title')
+        self.description = data['data']['attributes'].get('description')
+        self.cnt = data['data']['attributes'].get('cnt')
+        self.big_poster = data['data']['attributes'].get('big_poster')
+        self.small_poster = data['data']['attributes'].get('small_poster')
+        self.uid = data['data']['attributes'].get('uid')
+        self.toggle_url = data['data']['attributes'].get('toggle_url')
+        self.publish_type = data['data']['attributes'].get('publish_type')
+        self.create_type = data['data']['attributes'].get('create_type')
+        self.checked = data['data']['attributes'].get('checked')
+        self.order = data['data']['attributes'].get('order')
+        self.last_update = data['data']['attributes'].get('last_update')
+        self.isYours = data['data']['attributes'].get('isYours')
+        self.playlist_follow_link = data['data']['attributes'].get('playlist_follow_link')
+        self.playlist_follow_status = data['data']['attributes'].get('playlist_follow_status')
+        self.list_videos_playlist = data['data']['attributes'].get('list_videos_playlist')
+        
+        # self.videos: list[Video] = [Video({'data': video, 'included': []}, self.is_logged_in, self.session) for video in data['included'] if video['type'] == 'Video']
+
+        videos_data = []
+        for video in data['included']:
+            if video['type'] == 'Video':
+                response = self.session.get(f'{base_url}/api/fa/v1/video/video/show/videohash/{video['attributes']['uid']}?pr=1&mf=1', timeout=timeout)
+                data = response.json()
+
+                if 'meta' in data and 'status' not in data['meta']:
+                    videos_data.append(Video(data, self.is_logged_in, self.session))
+                else:
+                    self.videos = {'data': video, 'included': []}
+        
+        self.videos: list[Video] = videos_data
+
+    def follow_playlist(self, timeout: int = 10) -> bool:
+        """Follow the playlist.
+        
+        Args:
+            timeout (int, optional): The timeout for the HTTP request (default is 10 seconds).
+        
+        Returns:
+            bool: True if the playlist was successfully followed, False otherwise.
+        
+        Raises:
+            LoginRequiredError: If the user is not logged in.
+        """
+
+        if not self.is_logged_in:
+            raise LoginRequiredError()
+
+        if self.playlist_follow_status == 'no':
+            response = self.session.get(f'{base_url}{self.playlist_follow_link}', timeout=timeout)
+            data = response.json()
+
+            if response.status_code == 200 and data['data']['attributes']['type'] == 'success':
+                self.playlist_follow_link = data['data']['attributes']['link']
+                self.playlist_follow_status = 'yes'
+                return True
+        return False
+
+    def unfollow_playlist(self, timeout: int = 10) -> bool:
+        """Unfollow the playlist.
+        
+        Args:
+            timeout (int, optional): The timeout for the HTTP request (default is 10 seconds).
+        
+        Returns:
+            bool: True if the playlist was successfully unfollowed, False otherwise.
+        
+        Raises:
+            LoginRequiredError: If the user is not logged in.
+        """
+
+        if not self.is_logged_in:
+            raise LoginRequiredError()
+
+        if self.playlist_follow_status == 'yes':
+            response = self.session.get(f'{base_url}{self.playlist_follow_link}', timeout=timeout)
+            data = response.json()
+
+            if response.status_code == 200 and data['data']['attributes']['type'] == 'success':
+                self.playlist_follow_link = data['data']['attributes']['link']
+                self.playlist_follow_status = 'no'
+                return True
+        return False
 
 class User(object):
     """ Aparat User Model
@@ -831,7 +951,7 @@ class Aparat:
     """Aparat API Client
     
     Attributes:
-        proxy (str): The proxy URL, if used.
+        proxy (dict): The proxy dictionary, if used.
         session (requests.Session): The requests session object.
         is_logged_in (bool): Flag indicating if the client is logged in.
     """
@@ -921,6 +1041,102 @@ class Aparat:
             raise UsernameNotFoundError()
         else:
             raise LoginFailedError()
+
+    def __get_guid(self, timeout: int = 10) -> str:
+        """Fetch the GUID required for further authentication steps.
+        Args:
+            timeout (int, optional): The timeout for the HTTP request (default is 10 seconds).
+
+        Returns:
+            str: The GUID extracted from the response.
+        """
+        response = self.session.get('https://www.aparat.com/signin?callbackType=postmessage', timeout=timeout)
+        return response.text.split('guid: "')[1].split('",')[0]
+
+    def __get_temp_id(self, guid: str, timeout: int = 10) -> str:
+        """Fetch the temporary ID using the provided GUID.
+
+        Args:
+            guid (str): The GUID obtained from the initial request.
+            timeout (int, optional): The timeout for the HTTP request (default is 10 seconds).
+
+        Returns:
+            str: The temporary ID extracted from the response.
+        """
+        json_data = {'guid': guid}
+        response = self.session.post('https://www.aparat.com/api/fa/v1/user/Authenticate/auth?callbackType=postmessage', json=json_data, timeout=timeout)
+        return response.json()['data']['attributes']['temp_id']
+
+    def signup_step1(self, account: str, timeout: int = 10) -> bool:
+        """Perform the first step of the signup process.
+        
+        Args:
+            account (str): The account identifier (email or phone number).
+            timeout (int, optional): The timeout for the HTTP request (default is 10 seconds).
+
+        Returns:
+            bool: True if the first step is successful, otherwise raises an exception.
+        """
+        guid = self.__get_guid(timeout)
+        temp_id = self.__get_temp_id(guid, timeout)
+        json_data = {
+            'account': account,
+            'temp_id': temp_id,
+            'guid': guid
+        }
+        response = self.session.post('https://www.aparat.com/api/fa/v1/user/Authenticate/signup_step1?callbackType=postmessage', json=json_data, timeout=timeout)
+        if response.status_code == 200:
+            return True
+        else:
+            data = response.json()
+            raise ValueError(data)
+
+    def signup_step2(self, url: str, account: str, password: str, timeout: int = 10) -> bool:
+        """Perform the second step of the signup process using the verification link.
+
+        Args:
+            url (str): The URL or email text containing the signup confirmation link.
+            account (str): The account identifier (email or phone number).
+            password (str): The password for the new account.
+            timeout (int, optional): The timeout for the HTTP request (default is 10 seconds).
+
+        Returns:
+            bool: True if the signup process is successful, otherwise raises an exception.
+        """
+        pattern = r'http://email\.aparat\.com/ls/click\?upn=u001\.[^\s\]\)"\']+'
+        match = re.search(pattern, url)
+
+        if match:
+            url = match.group()
+        else:
+            raise ValueError("No matching link found.")
+
+        response = self.session.get(url, timeout=timeout)
+        guid = response.text.split('guid: "')[1].split('",')[0]
+        additionalget = response.text.split('additionalGet: "')[1].split('",')[0]
+        code = response.text.split('?code=')[1].split('&account=')[0]
+
+        json_data = {
+            'type': 'email',
+            'code': code,
+            'account': account,
+            'guid': guid
+        }
+        response = self.session.post(f'https://www.aparat.com/api/fa/v1/user/Authenticate/signup_step2{additionalget}', json=json_data, timeout=timeout).json()
+
+        temp_id = response['data']['attributes']['temp_id']
+        json_data = {
+            'type': 'email',
+            'code': code,
+            'account': account,
+            'pass': password,
+            'temp_id': temp_id,
+            'guid': guid,
+        }
+        response = self.session.post(f'https://www.aparat.com/api/fa/v1/user/Authenticate/signup_step2{additionalget}', json=json_data, timeout=timeout)
+        self.is_logged_in = True
+        self.username = account
+        return True
 
     def get_me(self, timeout: int = 10) -> Union[Dict, None]:
         """
@@ -1084,6 +1300,31 @@ class Aparat:
         else:
             raise VideoNotFoundError()
 
+    def get_playlist(self, playlist_id: int, timeout: int = 10) -> Playlist:
+        """Get playlist details from Aparat.
+        
+        Args:
+            playlist_id (int): The ID of the playlist to retrieve.
+            timeout (int, optional): The timeout for the request in seconds. Defaults to 10.
+        
+        Returns:
+            Playlist: An instance of the Playlist class containing the details of the requested playlist.
+        
+        Raises:
+            ValueError: If the playlist with the given ID is not found.
+        
+        Example:
+            >>> client = Aparat()
+            >>> playlist = client.get_playlist(12345)
+            >>> print(playlist.title)
+        """
+        response = self.session.get(f'{base_url}/api/fa/v1/video/playlist/one/playlist_id/{playlist_id}', timeout=timeout)
+        if response.status_code == 200:
+            data = response.json()
+            return Playlist(data, self.is_logged_in, self.session)
+        else:
+            raise ValueError('There is no playlist with this ID.')
+
     # import chardet
     # def __fetch_csrf_tokens(self, retries: int = 6, timeout: int = 10):
     #     for attempt in range(retries):
@@ -1240,12 +1481,8 @@ class Aparat:
             data = response.json()
             if 'data' in data:
                 return self.get_my_video(id=data['data']['id'])
-            elif 'errors' in data:
-                print(data)
-                if 'tags' in data['errors']:
-                    raise ValueError(data['errors']['tags'][0])
-                else:
-                    raise ValueError(data['errors'][0]['detail'])
+            else:
+                raise ValueError(data)
 
     def logout(self) -> None:
         """
@@ -1261,15 +1498,22 @@ class Aparat:
         if not self.is_logged_in:
             raise LoginRequiredError()
         
-        with open(f'{self.username}.session', 'wb') as f:
-            pickle.dump(self.session, f)
+        with open(f'{self.username}.session', 'wb') as file:
+            pickle.dump(self.session, file)
 
     def load_session(self, username: str, timeout: int = 10) -> bool:
         """
         Load the session object from a file.
+        
+        Args:
+            username (str): The username of the account.
+            timeout (int, optional): The timeout for the HTTP request (default is 10 seconds).
+            
+        Returns:
+            bool: True if the session is successfully loaded and the user is logged in, False otherwise.
         """
-        with open(f'{username}.session', 'rb') as f:
-            session = pickle.load(f)
+        with open(f'{username}.session', 'rb') as file:
+            session = pickle.load(file)
 
             response = session.get(f'{base_url}/api/fa/v1/etc/page/config/mode/full', timeout=timeout)
             if response.json()['included'][0]['attributes']:
@@ -1279,3 +1523,41 @@ class Aparat:
                 return True
             else:
                 return False
+    
+    def get_AuthV1(self) -> str:
+        """
+        Get the AuthV1 cookie.
+
+        Raises:
+            LoginRequiredError: If the client is not logged in.
+
+        Returns:
+            str: The value of the AuthV1 cookie.
+        """
+        if not self.is_logged_in:
+            raise LoginRequiredError()
+        
+        return self.session.cookies.get('AuthV1')
+
+    def load_AuthV1(self, AuthV1: str, timeout: int = 10) -> bool:
+        """
+        Load the AuthV1 cookie.
+
+        Args:
+            AuthV1 (str): The value of the AuthV1 cookie.
+            timeout (int, optional): The timeout for the server request. Defaults to 10 seconds.
+
+        Returns:
+            bool: `True` if the cookie is loaded successfully, otherwise `False`.
+        """
+        cookies = {'AuthV1': AuthV1}
+
+        response = requests.get(f'{base_url}/api/fa/v1/user/user/information', cookies=cookies, timeout=timeout)
+        data = response.json()
+        if response.status_code == 200:
+            self.session.cookies.set('AuthV1', AuthV1)
+            self.is_logged_in = True
+            self.username = data['data']['attributes']['email'] if data['data']['attributes']['has_email'] else data['data']['attributes']['username']
+            return True
+        else:
+            return False
