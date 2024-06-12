@@ -77,14 +77,21 @@ Unlike a video.
 - Returns:
     - bool: True if the video is successfully unliked, False otherwise.
 
-### `download(resolution: str = None, download_highest_resolution: bool = None, path: str = None, chunk_size: int = 1024 * 1024 * 4) -> str`
+### `download(self, resolution: str = None, download_highest_resolution: bool = None, path: str = None, show_progress_bar: bool = True) -> str`
 
 Download the video with the specified resolution.
 
-- `resolution` (str, optional): The desired video resolution (e.g., '144p', '720p').
-- `download_highest_resolution` (bool, optional): If True, download the highest available resolution.
-- `path` (str, optional): The path where the video will be saved. Defaults to the video's name.
-- `chunk_size` (int, optional): The size of chunks to download at a time (default is 4 MB).
+This method allows downloading a video from Aparat with the desired resolution. It supports downloading in chunks and shows a progress bar if enabled.
+
+- `resolution` (str, optional): The desired video resolution (e.g., '144p', '720p'). If `None`, the `download_highest_resolution` flag must be set to `True`.
+- `download_highest_resolution` (bool, optional): If `True`, downloads the highest available resolution. If `None`, `resolution` must be specified.
+- `path` (str, optional): The path where the video will be saved. Defaults to the video's name extracted from the URL.
+- `show_progress_bar` (bool, optional): If `True`, shows a progress bar during download. Defaults to `True`.
+- Returns:
+    - `str`: The path where the downloaded video is saved.
+- Raises:
+    - `ValueError`: If neither `resolution` nor `download_highest_resolution` is specified.
+    - `ResolutionError`: If the specified video resolution is not found.
 
 ### `report(reason: ReportReason, main_time: str = '', main_time1: str = '', main_time2: str = '', body: str = None, timeout: int = 10) -> Union[str, bool]`
 
