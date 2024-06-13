@@ -7,7 +7,7 @@ setup(
     author='Abol',
     author_email='abaqry8686@gmail.com',
     description='A library for interacting with the Aparat API',
-    long_description=open('README.md').read(),
+    long_description=open('README.md', encoding='UTF-8').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/AbolDev/AparatLib',
     license='MIT',
