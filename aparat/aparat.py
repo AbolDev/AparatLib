@@ -787,7 +787,7 @@ class Playlist(object):
         videos_data = []
         for video in data['included']:
             if video['type'] == 'Video':
-                response = self.session.get(f'{base_url}/api/fa/v1/video/video/show/videohash/{video['attributes']['uid']}?pr=1&mf=1', timeout=timeout)
+                response = self.session.get(f"{base_url}/api/fa/v1/video/video/show/videohash/{video['attributes']['uid']}?pr=1&mf=1", timeout=timeout)
                 data = response.json()
 
                 if 'meta' in data and 'status' not in data['meta']:
