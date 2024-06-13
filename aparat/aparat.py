@@ -1244,7 +1244,7 @@ class Aparat:
                 if comment['id'] == comment_id:
                     return Comment(comment['attributes'], vid, self.is_logged_in, self.session)
             while 'links' in data and 'more' in data['links'] and data['links']['more']:
-                response = self.session.get(f'{data['links']['more']}&perpage=100', timeout=timeout)
+                response = self.session.get(f"{data['links']['more']}&perpage=100", timeout=timeout)
                 data = None
                 if response.status_code == 200:
                     data = response.json()
