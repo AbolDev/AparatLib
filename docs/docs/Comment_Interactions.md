@@ -30,12 +30,12 @@ The `Comment` class represents a comment on an Aparat video and provides methods
 
 ## Methods
 
-### `__init__(data: Dict[str, Union[str, int]], vid: int, is_logged_in: bool, session)`
+### `__init__(self, data: Dict[str, Union[str, int]], uid: int, is_logged_in: bool, session)`
 
 Initialize a Comment object.
 
 - `data`: Dictionary containing comment data.
-- `vid`: ID of the associated video.
+- `uid`: UID of the associated video.
 - `is_logged_in`: Boolean indicating whether the user is logged in.
 - `session`: Session object for making HTTP requests.
 

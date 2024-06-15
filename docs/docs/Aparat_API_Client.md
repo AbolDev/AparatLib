@@ -70,14 +70,16 @@ Get a video by its ID or UID.
 - Returns:
     - The `MyVideo` object representing the video.
 
-### `get_comment(vid: str, comment_id: str, timeout: int = 10) -> Comment`
+### `get_comment(self, uid: str, comment_id: str, timeout: int = 10) -> Comment`
 Get information about a comment by its ID.
 
-- `vid` (str): The video ID.
-- `comment_id` (str): The comment ID.
+- `uid` (str): The UID of the video.
+- `comment_id` (str): The ID of the comment.
 - `timeout` (int, optional): The timeout for the HTTP request (default is 10 seconds).
 - Returns:
-    - The `Comment` object representing the comment.
+    - A `Comment` object containing comment information if successful.
+- Raises:
+    - `ValueError`: If the comment is not found.
 
 ### `notifications(timeout: int = 10) -> Union[Dict, None]`
 Get notifications for the current user.
@@ -93,19 +95,21 @@ Get the dashboard for the current user.
 - Returns:
     - A dictionary containing the user's dashboard if successful, otherwise `None`.
 
-### `get_video(vid: str, timeout: int = 10) -> Video`
+### `get_video(self, uid: str, timeout: int = 10) -> Video`
 Get video details from Aparat.
 
-- `vid` (str): The video ID.
-- `timeout` (int, optional): The request timeout (default is 10).
+- `uid` (str): The video UID.
+- `timeout` (int, optional): The timeout for the HTTP request (default is 10 seconds).
 - Returns:
     - An instance of the `Video` class representing the video.
+- Raises:
+    - `VideoNotFoundError`: If the requested video is not found.
 
 ### `get_playlist(self, playlist_id: int, timeout: int = 10) -> Playlist`
 Get playlist details from Aparat.
 
 - `playlist_id` (int): The ID of the playlist to retrieve.
-- `timeout` (int, optional): The request timeout (default is 10).
+- `timeout` (int, optional): The timeout for the HTTP request (default is 10 seconds).
 - Returns:
     - An instance of the `Playlist` class containing the details of the requested playlist.
 - Raises:
@@ -152,6 +156,6 @@ Get the AuthV1 cookie.
 Load the AuthV1 cookie.
 
 - `AuthV1` (str): The value of the AuthV1 cookie.
-- `timeout` (int, optional): The request timeout (default is 10).
+- `timeout` (int, optional): The timeout for the HTTP request (default is 10 seconds).
 - Returns:
     - `True` if the cookie is loaded successfully, otherwise `False`.
