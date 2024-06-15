@@ -2,17 +2,17 @@ from setuptools import setup, find_packages
 
 setup(
     name='AparatLib',
-    version='0.5.0',
+    version='0.5.1',
     packages=find_packages(),
     author='Abol',
     author_email='abaqry8686@gmail.com',
     description='A library for interacting with the Aparat API',
-    long_description=open('README.md', encoding='UTF-8').read(),
+    long_description=open('C:\\Users\\Bagheri\\Desktop\\projects\\python\\Github projects\\aparat\\README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/AbolDev/AparatLib',
     license='MIT',
     install_requires=[
-        'wget',
+        'tqdm',
         'requests',
         'python-magic',
     ],
