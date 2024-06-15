@@ -3,10 +3,10 @@ import base64
 import pickle
 import magic
 import uuid
-import wget
 import re
 import os
 from typing import Dict, Union
+from tqdm import tqdm
 from enum import Enum
 
 base_url = 'https://www.aparat.com'
@@ -135,17 +135,16 @@ class Comment(object):
         is_pinned (bool): Indicates if the comment is pinned.
     """
 
-    def __init__(self, data: Dict[str, Union[str, int]], vid: int, is_logged_in: bool, session):
+    def __init__(self, data: Dict[str, Union[str, int]], uid: int, is_logged_in: bool, session):
         """
         Initialize a Comment object.
 
         :param data: Dictionary containing comment data.
-        :param vid: ID of the associated video.
+        :param uid: UID of the associated video.
         :param is_logged_in: Boolean indicating whether the user is logged in.
         :param session: Session object for making HTTP requests.
         """
-
-        self.vid = vid
+        self.uid = uid
         self.data = data
         self.session = session
         self.is_logged_in = is_logged_in
@@ -265,7 +264,7 @@ class Comment(object):
             'body': body
         }
 
-        response = self.session.post(f'{base_url}/api/fa/v1/video/comment/reply_v2/videohash/{self.vid}', json=json_data, timeout=timeout)
+        response = self.session.post(f'{base_url}/api/fa/v1/video/comment/reply_v2/videohash/{self.uid}', json=json_data, timeout=timeout)
         data = response.json()
         if response.status_code == 200 and data['data'] and data['data']['type'] == 'success':
             return True
@@ -281,7 +280,7 @@ class Comment(object):
                  or False if an error occurs.
         """
 
-        response = self.session.get(f'{base_url}/api/fa/v1/video/comment/list_replies/comment_id/{self.id}/videohash/{self.vid}', timeout=timeout)
+        response = self.session.get(f'{base_url}/api/fa/v1/video/comment/list_replies/comment_id/{self.id}/videohash/{self.uid}', timeout=timeout)
         data = response.json()
         if response.status_code == 200:
             if data['data']:
@@ -509,7 +508,7 @@ class Video(object):
                     if str(comment['id']) == str(comment_id):
                         return Comment(comment['attributes'], self.uid, self.is_logged_in, self.session)
                 while 'links' in data and 'more' in data['links'] and data['links']['more']:
-                    response = self.session.get('{}&perpage=100'.format(data['links']['more']), timeout=timeout)
+                    response = self.session.get(f"{data['links']['more']}&perpage=100", timeout=timeout)
                     data = None
                     if response.status_code == 200:
                         data = response.json()
@@ -583,20 +582,33 @@ class Video(object):
         
         if not url:
             raise ResolutionError()
-
+        
         path = path if path else url.split('/')[-1].split('?')[0]
 
-        def progress_bar(current, total, width=40): 
-            progress = current / total
-            downloaded = current / (1024 * 1024)
-            total_size = total / (1024 * 1024)
-            arrow = '-' * int(progress * width - 1) + '>'
-            spaces = ' ' * (width - len(arrow))
-            print('\rDownloading: [{}] {:.2f}% ({:.2f}MB out of {:.2f}MB)'.format(arrow + spaces, progress * 100, downloaded, total_size), end='')
+        if path.endswith(os.sep) or os.path.isdir(path):
+            file_path = os.path.join(path, url.split('/')[-1].split('?')[0])
+        elif os.path.isfile(path) or '.' in os.path.basename(path):
+            file_path = path
+        else:
+            file_path = url.split('/')[-1].split('?')[0]
 
-        wget.download(url, path, bar=progress_bar if show_progress_bar else None)
-        return path
+        with self.session.get(url, stream=True) as r:
+            r.raise_for_status()
+            total_size = int(r.headers.get('Content-Length', 0))
+            chunk_size = 1024 * 1024  # 1 MB
+            with open(file_path, 'wb') as f:
+                if show_progress_bar:
+                    pbar = tqdm(total=total_size, unit='B', unit_scale=True, desc=os.path.basename(file_path))
+                for chunk in r.iter_content(chunk_size=chunk_size):
+                    if chunk:  # filter out keep-alive new chunks
+                        f.write(chunk)
+                        if show_progress_bar:
+                            pbar.update(len(chunk))
+                if show_progress_bar:
+                    pbar.close()
         
+        return file_path
+
     def report(self, reason: ReportReason, main_time: str = '', main_time1: str = '', main_time2: str = '', body: str = None, timeout: int = 10) -> Union[str, bool]:
         """
         Report the video for a specified reason.
@@ -1229,20 +1241,22 @@ class Aparat:
                         return MyVideo(video, self.is_logged_in, self.session)
         return None
 
-    def get_comment(self, vid: str, comment_id: str, timeout: int = 10) -> Comment:
+    def get_comment(self, uid: str, comment_id: str, timeout: int = 10) -> Comment:
         """
         Get information about a comment by their username.
 
-        :param user_id: The username of the user.
+        :param uid: The UID of the video.
+        :param comment_id: The ID of the comment.
         :param timeout: The timeout for the HTTP request (default is 10 seconds).
-        :return: A dictionary containing user information if successful, otherwise None.
+        :return: A Comment object containing comment information if successful.
+        :raises ValueError: If the comment is not found.
         """
-        response = self.session.get(f'{base_url}/api/fa/v1/video/comment/list/videohash/{vid}?perpage=100', timeout=timeout)
+        response = self.session.get(f'{base_url}/api/fa/v1/video/comment/list/videohash/{uid}?perpage=100', timeout=timeout)
         if response.status_code == 200:
             data = response.json()
             for comment in data['data']:
                 if comment['id'] == comment_id:
-                    return Comment(comment['attributes'], vid, self.is_logged_in, self.session)
+                    return Comment(comment['attributes'], uid, self.is_logged_in, self.session)
             while 'links' in data and 'more' in data['links'] and data['links']['more']:
                 response = self.session.get(f"{data['links']['more']}&perpage=100", timeout=timeout)
                 data = None
@@ -1250,7 +1264,7 @@ class Aparat:
                     data = response.json()
                     for comment in data['data']:
                         if comment['id'] == comment_id:
-                            return Comment(comment['attributes'], vid, self.is_logged_in, self.session)
+                            return Comment(comment['attributes'], uid, self.is_logged_in, self.session)
         raise ValueError('No comment found.')
 
     def notifications(self, timeout: int = 10) -> Union[Dict, None]:
@@ -1279,12 +1293,12 @@ class Aparat:
             return data
         return None
 
-    def get_video(self, vid: str, timeout: int = 10) -> Video:
+    def get_video(self, uid: str, timeout: int = 10) -> Video:
         """Get video details from Aparat.
         
         Args:
-            vid (str): The video ID.
-            timeout (int, optional): The request timeout. Defaults to 10.
+            uid (str): The video UID.
+            timeout (int, optional): The timeout for the HTTP request (default is 10 seconds).
         
         Returns:
             Video: An instance of the Video class representing the video.
@@ -1292,7 +1306,7 @@ class Aparat:
         Raises:
             VideoNotFoundError: If the requested video is not found.
         """
-        response = self.session.get(f'{base_url}/api/fa/v1/video/video/show/videohash/{vid}?pr=1&mf=1', timeout=timeout)
+        response = self.session.get(f'{base_url}/api/fa/v1/video/video/show/videohash/{uid}?pr=1&mf=1', timeout=timeout)
         data = response.json()
 
         if 'meta' in data and 'status' not in data['meta']:
